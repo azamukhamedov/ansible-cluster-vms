@@ -6,7 +6,6 @@
 
     cluster_vol_pool: "{{ hostvars[inventory_hostname].libvirt_vol_pool | default('default') }}"
     cluster_backing_image: "ubuntu-18.04.3-amd64-2048-40G.qcow2"
-    #cluster_backing_image: "centos-7.7-1908-amd64-2048-40G.qcow2"
     cluster_image_format: qcow2
     cluster_node_prefix: "asr-vm-"
     cluster_ip_prefix: "192.168.101"
@@ -44,7 +43,6 @@
       networks:
         - name: "{{ cluster_network_name }}"
           mode: nat
-          # bridge: virbr0
           mac: "{{ cluster_network_mac }}"
           ip:
             address: "{{cluster_ip_prefix}}.1"
@@ -98,7 +96,6 @@
   become_method: sudo
   gather_facts: false
   vars:
-  #    bridged_interface_macaddress: 52:54:00:bf:80:63
       fix_bridged_interface: true
   tasks:
 
