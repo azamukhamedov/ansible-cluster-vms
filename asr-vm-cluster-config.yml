@@ -1,0 +1,72 @@
+---
+libvirt_host_networks:
+- ip:
+    address: 192.168.101.1
+    dhcp:
+      hosts:
+      - ip: 192.168.101.100
+        mac: 52:54:00:8c:67:00
+        name: asr-vm-01
+        vars: {}
+      - ip: 192.168.101.101
+        mac: 52:54:00:8c:67:01
+        name: asr-vm-02
+        vars: {}
+      - ip: 192.168.101.102
+        mac: 52:54:00:8c:67:02
+        name: asr-vm-03
+        vars: {}
+      range:
+        end: 192.168.101.254
+        start: 192.168.101.1
+    netmask: 255.255.255.0
+  mac: 52:54:00:c0:7d:83
+  mode: nat
+  name: asr-vm-net
+libvirt_vms:
+- interfaces:
+  - mac: 52:54:00:8c:67:00
+    network: asr-vm-net
+    type: network
+  - bridge: br0
+    mac: 52:54:00:c0:52:64
+    type: bridge
+  memory_mb: 8192
+  name: asr-vm-01
+  state: present
+  vcpus: 4
+  volumes:
+  - backing_image: ubuntu-18.04.3-amd64-2048-40G.qcow2
+    device: disk
+    format: qcow2
+    name: asr-vm-01-vol
+    pool: default
+- interfaces:
+  - mac: 52:54:00:8c:67:01
+    network: asr-vm-net
+    type: network
+  memory_mb: 8192
+  name: asr-vm-02
+  state: present
+  vcpus: 4
+  volumes:
+  - backing_image: ubuntu-18.04.3-amd64-2048-40G.qcow2
+    device: disk
+    format: qcow2
+    name: asr-vm-02-vol
+    pool: default
+- interfaces:
+  - mac: 52:54:00:8c:67:02
+    network: asr-vm-net
+    type: network
+  memory_mb: 8192
+  name: asr-vm-03
+  state: present
+  vcpus: 4
+  volumes:
+  - backing_image: ubuntu-18.04.3-amd64-2048-40G.qcow2
+    device: disk
+    format: qcow2
+    name: asr-vm-03-vol
+    pool: default
+...

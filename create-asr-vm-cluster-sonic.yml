@@ -1,0 +1,107 @@
+---
+- name: Create VMs
+  hosts: "{{ libvirt_host | default('libvirt') }}"
+  vars:
+    libvirt_vm_uri: "qemu:///system"
+
+    cluster_vol_pool: "{{ hostvars[inventory_hostname].libvirt_vol_pool | default('default') }}"
+    cluster_backing_image: "ubuntu-18.04.3-amd64-2048-40G.qcow2"
+    #cluster_backing_image: "centos-7.7-1908-amd64-2048-40G.qcow2"
+    cluster_image_format: qcow2
+    cluster_node_prefix: "asr-vm-"
+    cluster_ip_prefix: "192.168.101"
+    cluster_ip_netmask: 255.255.255.0
+    cluster_mac_prefix: "52:54:00:8c:67"
+    cluster_network_name: asr-vm-net
+    cluster_network_mac: 52:54:00:c0:7d:83
+
+
+    cluster_bastion_port: 10922
+    cluster_bastion_host: usg-demo-4.sb.dfki.de
+    cluster_bastion_user: cluster-admin
+    cluster_bastion_ssh_private_key_file: /home/azamat/cluster_admin_id_rsa
+    cluster_ansible_ssh_common_args: >-
+          -o ProxyCommand='ssh
+          -o UserKnownHostsFile=/dev/null
+          -o StrictHostKeyChecking=no
+          -W %h:%p
+          {{ cluster_bastion_user }}@{{ cluster_bastion_host }}
+          -p {{ cluster_bastion_port }}
+          -i {{ cluster_bastion_ssh_private_key_file }}
+          '
+
+    libvirt_cluster:
+
+      config_file: "{{ libvirt_cluster_config_dir | default('.') }}/asr-vm-cluster-config.yml"
+      inventory_file: "{{ libvirt_cluster_inventory_dir | default(inventory_dir) }}/asr-vm-cluster-inventory.yml"
+      inventory_group: "asr-vm-cluster"
+      ansible_user: "vagrant"
+      ansible_ssh_pass: "vagrant"
+      ansible_become_pass: "vagrant"
+      ansible_ssh_private_key_file: "{{ inventory_dir }}/keys/vagrant"
+      ansible_ssh_common_args: "{{ cluster_ansible_ssh_common_args }}"
+
+      networks:
+        - name: "{{ cluster_network_name }}"
+          mode: nat
+          # bridge: virbr0
+          mac: "{{ cluster_network_mac }}"
+          ip:
+            address: "{{cluster_ip_prefix}}.1"
+            netmask: "{{ cluster_ip_netmask }}"
+            dhcp:
+              range:
+                start: "{{cluster_ip_prefix}}.1"
+                end: "{{cluster_ip_prefix}}.254"
+
+      nodes:
+        - name: "{{cluster_node_prefix}}01"
+          count: 1
+          vcpus: 4
+          memory_mb: 8192
+          volumes:
+            - name: "{{cluster_node_prefix}}01-vol"
+              device: 'disk'
+              format: "{{cluster_image_format}}"
+              backing_image: "{{cluster_backing_image}}"
+              pool: '{{ cluster_vol_pool }}'
+          interfaces:
+            - network: "{{ cluster_network_name }}"
+              mac: "{{cluster_mac_prefix}}:[% '%02x' | format(global_index) %]"
+              ip: '{{cluster_ip_prefix}}.[% 100 + global_index %]'
+            - bridge: br0
+              mac: "52:54:00:c0:52:64"
+
+        - name: "[% '{{cluster_node_prefix}}%02d' | format(global_index+1) %]"
+          count: 2
+          vcpus: 4
+          memory_mb: 8192
+          volumes:
+            - name: "[% '{{cluster_node_prefix}}%02d-vol' | format(global_index+1) %]"
+              device: 'disk'
+              format: "{{cluster_image_format}}"
+              backing_image: "{{cluster_backing_image}}"
+              pool: '{{ cluster_vol_pool }}'
+          interfaces:
+            - network: "{{ cluster_network_name }}"
+              mac: "{{cluster_mac_prefix}}:[% '%02x' | format(global_index) %]"
+              ip: '{{cluster_ip_prefix}}.[% 100 + global_index %]'
+
+  tasks:
+
+    - name: Create cluster
+      include_role:
+        name: libvirt-cluster-create
+
+- name: Initialize VMs
+  hosts: libvirt_cluster_hosts
+  become_method: sudo
+  gather_facts: false
+  vars:
+  #    bridged_interface_macaddress: 52:54:00:bf:80:63
+      fix_bridged_interface: true
+  tasks:
+
+    - name: Initialize cluster
+      include_role:
+        name: libvirt-cluster-init
